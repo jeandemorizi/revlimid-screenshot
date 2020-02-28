@@ -1,6 +1,7 @@
 
 const cli_progress = require('cli-progress');
 const config = require('./config.json');
+const puppeteer = require('puppeteer');
 
 // GLOBALS
 var base_url = config.base_url;
@@ -46,7 +47,6 @@ function parseArgs() {
 }
 
 function saveScreenshots() {
-	const puppeteer = require('puppeteer');
 
 	(async () => {
 	  const browser = await puppeteer.launch();

@@ -4,6 +4,10 @@
 
 - JavaScript
     - [**Npm**](https://www.npmjs.com): Package manager used to install dependencies and everything you need.
+- Puppeteer
+    - Node library which provides a high-level API to control Chrome or Chromium over the DevTools Protocol.
+- Cli Progress Bar
+    - A simple CLI progress bar.
 
 ## Before Getting Started
 This Guide assumes you have
