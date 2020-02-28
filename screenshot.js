@@ -10,6 +10,7 @@ var base_url = config.base_url;
 var viewport = config.viewport;
 var screenshot_path = config.screenshot_path;
 var pages = [...config.pages.mm, ...config.pages.mds, ...config.pages.mcl, ...config.pages.rrfl];
+var class_filter = '';
 
 // CREATE A NEW PROGRESS BAR INSTANCE AND USE SHADES_CLASSIC THEME
 const progress_bar = new cli_progress.SingleBar({}, cli_progress.Presets.shades_classic);
@@ -46,6 +47,9 @@ function parseArgs() {
 	if (argv.u != null) {
 		base_url = argv.u;
 	}
+	if (argv.c != null) {
+		class_filter = argv.c;
+	}
 }
 
 function saveScreenshots() {
@@ -63,36 +67,38 @@ function saveScreenshots() {
 	  	var url = base_url + p;
 		await tab.goto(url);
 
-		// CLOSING THE MODAL FOR THE FIRST PAGE
-		if(i == 1)  closeModal(tab);
+		let contain_class = await containClass(tab, class_filter);
 
-		// CREATING THE PNG
-		var filename = generateFileName(i, p);
-		await tab.screenshot({
-			path: screenshot_path + "/" + filename, 
-			fullPage: true, 
-			type: 'jpeg'
-		});
-		
+		if (contain_class || class_filter == '') {
+			// CLOSING THE MODAL FOR THE FIRST PAGE
+			if(i == 1)  await closeModal(tab);
+
+			// CREATING THE PNG
+			var filename = generateFileName(i, p);
+			await tab.screenshot({
+				path: screenshot_path + "/" + filename, 
+				fullPage: true, 
+				type: 'jpeg'
+			});
+		}
 		progress_bar.update(i);
 		i++;
 
 	  }
 	  progress_bar.stop();
-	  console.log('Success!');
 	  await browser.close();
+	  console.log('\nSuccess!');
+	  process.exit();
 	})();
 }
 
-function closeModal(tab) {
-	(async () => {
-		await tab.evaluate(() => {
-		    let elements = document.querySelector('[data-modal="identify"]').getElementsByClassName('js-modal-close');
-		    for (let element of elements)
-		        element.click();
-		});
-		await tab.waitFor(1000);
-	})();
+async function closeModal(tab) {
+	await tab.evaluate(() => {
+		let elements = document.querySelector('[data-modal="identify"]').getElementsByClassName('js-modal-close');
+		for (let element of elements)
+			element.click();
+	});
+	await tab.waitFor(1000);
 }
 
 function generateFileName(index, page) {
@@ -120,6 +126,18 @@ function deleteFiles() {
 		}
 	});
 }
+
+async function containClass(tab, class_filter) {
+	let contain_class = await tab.evaluate((cf) => {
+		let data = [];
+		let elements = document.getElementsByClassName(cf);
+		for (var element of elements)
+			data.push(1);
+		return data.length ? true : false;
+	}, class_filter);
+	return contain_class;
+}
+
 function run() {
 	parseArgs();
 	deleteFiles();
