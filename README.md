@@ -28,6 +28,7 @@ node screenshot [OPTIONS]
 - For setting the site, use `-s`, values can be `mm`, `mcl`, `mds`, `rrfl`, default is all the sites in the config.json file.
 - For setting the viewport, use `-v`, values can be `mobile` _(376x736)_, `tablet` _(768x1024)_, `large-tablet` _(992x867)_, `desktop` _(1200*867)_, `large-desktop` _(1680*867)_, default viewport is set in the config.json file.
 - For setting the base_url, use `-u`, default base url is `http://v2-clg-revhcp.lndo.site` and can be changed in the config.json file.
+- For setting the class filter, use `-c`, this option will only take screenshots of pages with the class specified.
 
 ### Examples
 
@@ -54,6 +55,13 @@ $ node screenshot -v desktop
 ```bash
 $ node screenshot -v large-tablet -s rrfl
 ```
+
+* Screenshot the mds site with side-by-side class
+
+```bash
+$ node screenshot -s mds -c side-by-side
+```
+
 ## Author
 
 Jean Paul Demorizi - jeandemorizi@bairesdev.com
