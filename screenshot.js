@@ -2,6 +2,8 @@
 const cli_progress = require('cli-progress');
 const config = require('./config.json');
 const puppeteer = require('puppeteer');
+const fs = require('fs');
+const path = require('path');
 
 // GLOBALS
 var base_url = config.base_url;
@@ -102,8 +104,25 @@ function generateFileName(index, page) {
 	return ( filename != "mm - " ? filename : "mm") + '.jpg';
 }
 
+function deleteFiles() {
+	const directory = 'images';
+
+	fs.readdir(directory, (err, files) => {
+		if (err) throw err;
+
+		for (const file of files) {
+			if (file.endsWith('.jpg')) {
+				fs.unlink(path.join(directory, file), err => {
+					if (err) throw err;
+				});
+			}
+
+		}
+	});
+}
 function run() {
 	parseArgs();
+	deleteFiles();
 	saveScreenshots();
 }
 
