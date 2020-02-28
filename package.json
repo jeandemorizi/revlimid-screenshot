@@ -1,0 +1,17 @@
+{
+  "name": "revlimid-auto-screenshot",
+  "version": "1.0.0",
+  "description": "Tool to screenshots all the pages in the Revlimid Site",
+  "main": "screenshot.js",
+  "dependencies": {
+    "cli-progress": "^3.6.0",
+    "minimist": "^1.2.0",
+    "puppeteer": "^2.1.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "node.js screenshot.js -v desktop -s mcl"
+  },
+  "author": "Jean Paul Demorizi",
+  "license": "ISC"
+}
