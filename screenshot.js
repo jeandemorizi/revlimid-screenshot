@@ -1,24 +1,22 @@
-
 const cli_progress = require('cli-progress');
-const config = require('./config.json');
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
+const mergeImg = require('merge-img');
+const config = require('./config.json');
 
 // GLOBALS
-var base_url = config.base_url;
-var viewport = config.viewport;
-var screenshot_path = config.screenshot_path;
-var pages = [...config.pages.mm, ...config.pages.mds, ...config.pages.mcl, ...config.pages.rrfl];
-var class_filter = '';
+let base_url = config.base_url;
+let viewport = config.viewport;
+let screenshot_path = config.screenshot_path;
+let pages = [...config.pages.mm, ...config.pages.mds, ...config.pages.mcl, ...config.pages.rrfl];
+let class_filter = '';
 
 // CREATE A NEW PROGRESS BAR INSTANCE AND USE SHADES_CLASSIC THEME
 const progress_bar = new cli_progress.SingleBar({}, cli_progress.Presets.shades_classic);
- 
-
+const argv = require('minimist')(process.argv.slice(2));
 
 function parseArgs() {
-	var argv = require('minimist')(process.argv.slice(2));
 	
 	switch(argv.v) {
 		case 'mobile':
@@ -33,16 +31,8 @@ function parseArgs() {
 			viewport = { width: 1680, height: 867 }; break;
 		default:
 	}
-	switch(argv.s) {
-		case 'mm':
-			pages = config.pages.mm; break;
-		case 'mcl':
-			pages = config.pages.mcl; break;
-		case 'mds':
-			pages = config.pages.mds; break;
-		case 'rrfl' :
-			pages = config.pages.rrfl; break;
-		default:
+	if (!!argv.s) {
+		pages = config.pages[argv.s];
 	}
 	if (argv.u != null) {
 		base_url = argv.u;
@@ -52,44 +42,44 @@ function parseArgs() {
 	}
 }
 
-function saveScreenshots() {
-
-	(async () => {
+const saveScreenshots = async () => {
 	  const browser = await puppeteer.launch();
-	  const tab = await browser.newPage();
-	  await tab.setViewport(viewport)
-	  
-	  var i = 1;
-	  progress_bar.start(pages.length, 0);
-	  for (let p of pages) {
+	let i = 1;
+	progress_bar.start(pages.length, 0);
+	  const images = [];
 
-	  	// GOING TO URL
-	  	var url = base_url + p;
-		await tab.goto(url);
+	  return Promise.all(pages.map(async p => {
+		  const tab = await browser.newPage();
+		  await tab.setViewport(viewport)
 
-		let contain_class = await containClass(tab, class_filter);
+		  // GOING TO URL
+		  let url = base_url + p;
+		  await tab.goto(url);
 
-		if (contain_class || class_filter == '') {
-			// CLOSING THE MODAL FOR THE FIRST PAGE
-			if(i == 1)  await closeModal(tab);
+		  let contain_class = await containClass(tab, class_filter);
 
-			// CREATING THE PNG
-			var filename = generateFileName(i, p);
-			await tab.screenshot({
-				path: screenshot_path + "/" + filename, 
-				fullPage: true, 
-				type: 'jpeg'
-			});
-		}
-		progress_bar.update(i);
-		i++;
+		  if (contain_class || class_filter == '') {
+			  // CLOSING THE MODAL FOR THE FIRST PAGE
+			  if(i === 1)  await closeModal(tab);
 
-	  }
-	  progress_bar.stop();
-	  await browser.close();
-	  console.log('\nSuccess!');
-	  process.exit();
-	})();
+			  // CREATING THE PNG
+			  let filename = `${screenshot_path}/${generateFileName(i, p)}`;
+			  await tab.screenshot({
+				  path: filename,
+				  fullPage: true,
+				  type: 'jpeg'
+			  });
+			  images.push(filename)
+		  }
+		  progress_bar.update(i);
+		  i++;
+	  }))
+		  .then(async () => {
+			  if (argv.m) {
+				  await join(images, `${argv.s} - ${argv.v || 'desktop'}`)
+			  }
+			  await browser.close();
+		  });
 }
 
 async function closeModal(tab) {
@@ -102,7 +92,7 @@ async function closeModal(tab) {
 }
 
 function generateFileName(index, page) {
-	var filename = page.replace(base_url, "").substring(1).replace(/\//g," - ");
+	let filename = page.replace(base_url, "").substring(1).replace(/\//g, " - ");
 
 	if (!(filename.startsWith("mcl") || filename.startsWith("mds") || filename.startsWith("rrfl"))) {
 		filename = 'mm - ' + filename;
@@ -138,11 +128,25 @@ async function containClass(tab, class_filter) {
 	return contain_class;
 }
 
-function run() {
+const run = async () => {
 	parseArgs();
 	deleteFiles();
-	saveScreenshots();
+	return await saveScreenshots();
 }
 
-run();
+const join = async (paths, fileName = 'merged') => {
+	console.log("\n");
+	console.log(paths);
+	return mergeImg(paths)
+		.then((img) => {
+			// Save image as file
+			img.write(`${screenshot_path}/${fileName}.png`, () => console.log('done'));
+		})
+		.catch(error => console.log(error));
+}
 
+run().then(() => {
+	progress_bar.stop();
+	console.log('\nSuccess!');
+	// return process.exit();
+});
