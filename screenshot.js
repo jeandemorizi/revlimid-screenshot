@@ -17,7 +17,6 @@ const progress_bar = new cli_progress.SingleBar({}, cli_progress.Presets.shades_
 const argv = require('minimist')(process.argv.slice(2));
 
 function parseArgs() {
-	
 	switch(argv.v) {
 		case 'mobile':
 			viewport = { width: 376, height: 736 }; break;
@@ -43,43 +42,50 @@ function parseArgs() {
 }
 
 const saveScreenshots = async () => {
-	  const browser = await puppeteer.launch();
+	const browser = await puppeteer.launch();
 	let i = 1;
 	progress_bar.start(pages.length, 0);
-	  const images = [];
+	const images = [];
 
-	  return Promise.all(pages.map(async p => {
-		  const tab = await browser.newPage();
-		  await tab.setViewport(viewport)
+	return Promise.all(pages.map(async p => {
+	  const tab = await browser.newPage();
+	  await tab.setViewport(viewport)
 
-		  // GOING TO URL
-		  let url = base_url + p;
-		  await tab.goto(url);
+	  // GOING TO URL
+	  let url = base_url + p;
+		try {
+			await tab.goto(url);
 
-		  let contain_class = await containClass(tab, class_filter);
+			let contain_class = await containClass(tab, class_filter);
 
-		  if (contain_class || class_filter == '') {
-			  // CLOSING THE MODAL FOR THE FIRST PAGE
-			  if(i === 1)  await closeModal(tab);
+			if (contain_class || class_filter == '') {
+				// CLOSING THE MODAL FOR THE FIRST PAGE
+				if (i === 1) await closeModal(tab);
 
-			  // CREATING THE PNG
-			  let filename = `${screenshot_path}/${generateFileName(i, p)}`;
-			  await tab.screenshot({
-				  path: filename,
-				  fullPage: true,
-				  type: 'jpeg'
-			  });
-			  images.push(filename)
+				// CREATING THE PNG
+				const fileName = `${screenshot_path}/${generateFileName(i, p)}`;
+				const screenshotOptions = {
+					fullPage: true,
+					type: 'jpeg'
+				}
+				if (!argv.b) {
+					screenshotOptions.path = fileName;
+				}
+				const buffer = await tab.screenshot(screenshotOptions);
+				images.push({buffer, fileName});
+			}
+			progress_bar.update(i);
+			i++;
+		} catch (e) {
+			console.log(e);
+		}
+	}))
+	  .then(async () => {
+		  if (argv.m) {
+			  await join(images, `${argv.s} - ${argv.v || 'desktop'}`)
 		  }
-		  progress_bar.update(i);
-		  i++;
-	  }))
-		  .then(async () => {
-			  if (argv.m) {
-				  await join(images, `${argv.s} - ${argv.v || 'desktop'}`)
-			  }
-			  await browser.close();
-		  });
+		  await browser.close();
+	  });
 }
 
 async function closeModal(tab) {
@@ -134,13 +140,25 @@ const run = async () => {
 	return await saveScreenshots();
 }
 
-const join = async (paths, fileName = 'merged') => {
+/**
+ *
+ * @param images {Array.<{fileName: String, buffer: Buffer}>}
+ * @param fileName
+ * @returns {Promise<any>}
+ */
+const join = async (images,
+					fileName = 'merged') => {
+	const paths = images.map(item => item.fileName);
 	console.log("\n");
 	console.log(paths);
-	return mergeImg(paths)
+	// images are not aligned in the order of the config,
+	// therefore need to output the array to know which image belongs to which path
+	// TODO: need to make that the images are aligned in the same order of config
+	// TODO: alternatively create a .txt file with the order
+	return mergeImg(argv.b ? images.map(item => item.buffer) : paths)
 		.then((img) => {
 			// Save image as file
-			img.write(`${screenshot_path}/${fileName}.png`, () => console.log('done'));
+			img.write(`${screenshot_path}/${fileName}.png`, () => console.log('done merging'));
 		})
 		.catch(error => console.log(error));
 }
