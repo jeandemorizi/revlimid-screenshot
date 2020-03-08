@@ -42,28 +42,26 @@ function parseArgs() {
 }
 
 const saveScreenshots = async () => {
-	const browser = await puppeteer.launch();
+	const browser = await puppeteer.launch({defaultViewport: viewport});
 	let i = 1;
 	progress_bar.start(pages.length, 0);
 	const images = [];
 
-	return Promise.all(pages.map(async p => {
-	  const tab = await browser.newPage();
-	  await tab.setViewport(viewport)
-
-	  // GOING TO URL
-	  let url = base_url + p;
-		try {
+	return new Promise(async function(resolve) {
+		const tab = await browser.newPage();
+		for(let p of pages) {
+			// GOING TO URL
+			let url = base_url + p;
 			await tab.goto(url);
 
-			let contain_class = await containClass(tab, class_filter);
+			let contain_class = !!class_filter ? await containClass(tab, class_filter) : null;
 
 			if (contain_class || class_filter == '') {
 				// CLOSING THE MODAL FOR THE FIRST PAGE
 				if (i === 1) await closeModal(tab);
 
 				// CREATING THE PNG
-				const fileName = `${screenshot_path}/${generateFileName(i, p)}`;
+				const fileName = `${screenshot_path}/${generateFileName(p)}`;
 				const screenshotOptions = {
 					fullPage: true,
 					type: 'jpeg'
@@ -76,16 +74,15 @@ const saveScreenshots = async () => {
 			}
 			progress_bar.update(i);
 			i++;
-		} catch (e) {
-			console.log(e);
 		}
-	}))
-	  .then(async () => {
-		  if (argv.m) {
-			  await join(images, `${argv.s} - ${argv.v || 'desktop'}`)
-		  }
-		  await browser.close();
-	  });
+		resolve('Success');
+	})
+	.then(async () => {
+	if (argv.m) {
+			await join(images, `${argv.s} - ${argv.v || 'desktop'}`)
+		}
+		await browser.close();
+	});
 }
 
 async function closeModal(tab) {
@@ -97,7 +94,7 @@ async function closeModal(tab) {
 	await tab.waitFor(1000);
 }
 
-function generateFileName(index, page) {
+function generateFileName(page) {
 	let filename = page.replace(base_url, "").substring(1).replace(/\//g, " - ");
 
 	if (!(filename.startsWith("mcl") || filename.startsWith("mds") || filename.startsWith("rrfl"))) {
