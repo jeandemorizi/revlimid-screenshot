@@ -6,10 +6,11 @@ const mergeImg = require('merge-img');
 const config = require('./config.json');
 
 // GLOBALS
-let base_url = config.base_url;
-let viewport = config.viewport;
-let screenshot_path = config.screenshot_path;
-let pages = [...config.pages.mm, ...config.pages.mds, ...config.pages.mcl, ...config.pages.rrfl];
+let { base_url, viewport, screenshot_path } = config;
+let pages = [];
+Object.keys(config.pages).map(function(key){
+	pages = pages.concat(config.pages[key]);
+});
 let class_filter = '';
 
 // CREATE A NEW PROGRESS BAR INSTANCE AND USE SHADES_CLASSIC THEME
@@ -17,7 +18,7 @@ const progress_bar = new cli_progress.SingleBar({}, cli_progress.Presets.shades_
 const argv = require('minimist')(process.argv.slice(2));
 
 function parseArgs() {
-	switch(argv.v) {
+	switch(argv.v) { // VIEWPORT
 		case 'mobile':
 			viewport = { width: 376, height: 736 }; break;
 		case 'tablet':
@@ -30,13 +31,13 @@ function parseArgs() {
 			viewport = { width: 1680, height: 867 }; break;
 		default:
 	}
-	if (!!argv.s) {
+	if (!!argv.s) { // SITE
 		pages = config.pages[argv.s];
 	}
-	if (argv.u != null) {
+	if (!!argv.u) { // BASE URL
 		base_url = argv.u;
 	}
-	if (argv.c != null) {
+	if (!!argv.c) { // CLASS FILTER
 		class_filter = argv.c;
 	}
 }
@@ -163,5 +164,5 @@ const join = async (images,
 run().then(() => {
 	progress_bar.stop();
 	console.log('\nSuccess!');
-	// return process.exit();
+	return process.exit();
 });
